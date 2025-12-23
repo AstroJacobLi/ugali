@@ -27,6 +27,15 @@ from ugali.utils.logger import logger
 from ugali.isochrone.model import Isochrone
 from ugali.isochrone.model import get_iso_dir
 
+Roman_zp_AB_Vega_parsec = {'F062': 0.1516780915703379,
+    'F087': 0.5133462686585959,
+    'F106': 0.6609068434593195,
+    'F129': 1.1056961143945754,
+    'F146': 1.1618106810147644,
+    'F158': 1.3186852414129346,
+    'F184': 1.558177315836199,
+    'F213': 1.8362285584721012}
+
 # survey system
 photsys_dict = odict([
         ('des' ,'tab_mag_odfnew/tab_mag_decam.dat'),
@@ -35,6 +44,9 @@ photsys_dict = odict([
         ('acs_wfc' ,'tab_mag_odfnew/tab_mag_acs_wfc.dat'),
         ('lsst', 'tab_mag_odfnew/tab_mag_lsst.dat'),
         ('lsst_dp0', 'tab_mag_odfnew/tab_mag_lsstDP0.dat'),
+        ('lsst_r1p9', 'tab_mag_odfnew/tab_mag_lsstR1.9.dat'),
+        ('roman', 'tab_mag_odfnew/tab_mag_Roman2021.dat'),
+        ('euclid', 'tab_mag_odfnew/tab_mag_euclid_nisp.dat'),
 ])
 
 photname_dict = odict([
@@ -44,6 +56,9 @@ photname_dict = odict([
         ('acs_wfc','HST/ACS'),
         ('lsst', 'LSST'),
         ('lsst_dp0', 'LSST'),
+        ('lsst_r1p9', 'LSST'),
+        ('roman', 'Roman'),
+        ('euclid', 'Euclid'),
 ])
 
 # Commented options may need to be restored for older version/isochrones.
@@ -407,6 +422,20 @@ class Bressan2012(ParsecIsochrone):
                 (14,('Y',float)),
                 (16,('stage',float))
                 ]),
+        roman = odict([
+                (3, ('mass_init', float)),   # Mini
+                (5, ('mass_act',  float)),   # Mass
+                (6, ('log_lum',   float)),   # logL
+                (9, ('stage',     int)),     # phase/label-like integer
+                (28, ('F062', float)),
+                (29, ('F087', float)),
+                (30, ('F106', float)),
+                (31, ('F129', float)),
+                (32, ('F158', float)),
+                (33, ('F184', float)),
+                (34, ('F146', float)),
+                (35, ('F213', float)),
+            ]),
         )
 
     def _parse(self,filename):
@@ -423,9 +452,25 @@ class Bressan2012(ParsecIsochrone):
 
         # delimiter='\t' is used to be compatible with OldPadova...
         # ADW: This should be updated, but be careful of column numbering
-        kwargs = dict(delimiter='\t',usecols=list(columns.keys()),
-                      dtype=list(columns.values()))
+        if self.survey.lower() == 'roman':
+            kwargs = dict(delimiter=None,usecols=list(columns.keys()),
+                          dtype=list(columns.values()))
+        else:
+            kwargs = dict(delimiter='\t',usecols=list(columns.keys()),
+                          dtype=list(columns.values()))
         self.data = np.genfromtxt(filename,**kwargs)
+        self.data = self.data[~np.in1d(self.data['stage'], [9])]
+
+        if self.survey.lower() == 'roman':
+            # covert Vega to AB
+            self.data['F062'] = self.data['F062'] + Roman_zp_AB_Vega_parsec['F062']
+            self.data['F087'] = self.data['F087'] + Roman_zp_AB_Vega_parsec['F087']
+            self.data['F106'] = self.data['F106'] + Roman_zp_AB_Vega_parsec['F106']
+            self.data['F129'] = self.data['F129'] + Roman_zp_AB_Vega_parsec['F129']
+            self.data['F158'] = self.data['F158'] + Roman_zp_AB_Vega_parsec['F158']
+            self.data['F184'] = self.data['F184'] + Roman_zp_AB_Vega_parsec['F184']
+            self.data['F146'] = self.data['F146'] + Roman_zp_AB_Vega_parsec['F146']
+            self.data['F213'] = self.data['F213'] + Roman_zp_AB_Vega_parsec['F213']
 
         self.mass_init = self.data['mass_init']
         self.mass_act  = self.data['mass_act']
@@ -502,6 +547,30 @@ class Marigo2017(ParsecIsochrone):
                 (29,('z',float)),
                 (30,('Y',float)),
                 ]),
+        roman = odict([
+                (3, ('mass_init',float)),
+                (5, ('mass_act',float)),
+                (6, ('log_lum',float)),
+                (9,('stage',float)),
+                (25, ('F062',float)),
+                (26,('F087',float)),
+                (27,('F106',float)),
+                (28,('F129',float)),
+                (29,('F158',float)),
+                (30,('F184',float)),
+                (31,('F146',float)),
+                (32,('F213',float)),
+                ]),
+        euclid = odict([
+                (3, ('mass_init',float)),
+                (5, ('mass_act',float)),
+                (6, ('log_lum',float)),
+                (9,('stage',float)),
+                (25, ('VIS',float)),
+                (26,('Y',float)),
+                (28,('J',float)),
+                (30,('H',float)),
+                ])
         )
     columns['lsst'] = copy.deepcopy(columns['lsst_dp0'])
 
